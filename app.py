@@ -52,7 +52,7 @@ except ValueError:
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.Text)
     role = db.Column(db.String(20), default='manager')
     slug = db.Column(db.String(64), unique=True)  # short identifier for links
 
@@ -161,24 +161,25 @@ def get_client_ip():
     return request.remote_addr
 
 def is_duplicate_click(keitaro_sub_id, fbclid, full_url, ip, ua):
-    """Check for duplicate clicks within 24 hours"""
+    """Check for duplicate clicks within 24 hours without JSON operators (Postgres-safe)"""
+    # 1) сначала по явным идентификаторам
     if keitaro_sub_id:
         existing = Click.query.filter_by(keitaro_sub_id=keitaro_sub_id).first()
         if existing:
             return existing
-    elif fbclid:
+    if fbclid:
         existing = Click.query.filter_by(fbclid=fbclid).first()
         if existing:
             return existing
-    
-    # Check by hash of full_url + ip + ua within 24 hours
-    hash_input = f"{full_url}{ip}{ua}"
-    hash_value = hashlib.md5(hash_input.encode()).hexdigest()
+
+    # 2) затем эвристика: та же связка URL + IP + UA за последние 24 часа
     yesterday = datetime.utcnow() - timedelta(days=1)
-    existing = Click.query.filter(
-        Click.params.contains({'hash': hash_value}),
-        Click.ts > yesterday
-    ).first()
+    existing = (Click.query
+                .filter(Click.landing_url == full_url,
+                        Click.ip == ip,
+                        Click.ua == ua,
+                        Click.ts > yesterday)
+                .first())
     return existing
 
 def select_chat_link(route=None, manager_slug=None):
