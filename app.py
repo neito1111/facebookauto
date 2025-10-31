@@ -62,6 +62,10 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    @property
+    def is_admin(self):
+        return self.role == 'admin'
+
 class ChatLink(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     slug = db.Column(db.String(100), unique=True, nullable=False)
@@ -212,8 +216,9 @@ def track_click():
     # Extract parameters
     full_url = data.get('full_url', '')
     referrer = data.get('referrer', '')
-    user_agent = data.get('user_agent', '')
-    ip = data.get('ip', get_client_ip())
+    user_agent = data.get('user_agent', '') or request.headers.get('User-Agent', '')
+    ip_raw = data.get('ip')
+    ip = (ip_raw or '').strip() or get_client_ip()
     utm_source = data.get('utm_source', '')
     utm_medium = data.get('utm_medium', '')
     utm_campaign = data.get('utm_campaign', '')
@@ -271,7 +276,20 @@ def track_click():
         chat_link.views += 1
     
     db.session.commit()
-    
+    # Emit real-time update for new click
+    socketio.emit('click', {
+        'server_sub_id': server_sub_id,
+        'timestamp': click.ts.isoformat(),
+        'ip': ip,
+        'utm_source': utm_source,
+        'utm_campaign': utm_campaign,
+        'fbclid': fbclid,
+        'chat_link': {
+            'slug': chat_link.slug if chat_link else None,
+            'marker': chat_link.marker if chat_link else None
+        } if chat_link else None
+    })
+
     return jsonify({
         'server_sub_id': server_sub_id,
         'chat_link': {
@@ -364,15 +382,7 @@ def create_lead():
     
     # Require CTA click exists for this server_sub_id
     click = Click.query.filter_by(server_sub_id=server_sub_id).first()
-    # Enforce allowed domain for pixel if configured
-    if allowed_domain:
-        try:
-            from urllib.parse import urlparse
-            landing_host = (urlparse(click.landing_url).hostname or '').lower()
-            if landing_host != allowed_domain and not landing_host.endswith('.' + allowed_domain):
-                return jsonify({'error': f'Domain not allowed for this pixel (allowed: {allowed_domain})'}), 403
-        except Exception as e:
-            return jsonify({'error': f'Domain validation error: {str(e)}'}), 400
+    # Domain enforcement disabled: pixel can be used regardless of landing domain
     if not click:
         return jsonify({'error': 'Click not found'}), 404
     if not CtaClick.query.filter_by(server_sub_id=server_sub_id).first():
@@ -407,13 +417,11 @@ def create_lead():
     # Send to Facebook CAPI
     pixel_resp = send_facebook_capi(click, lead, access_token)
     lead.pixel_resp = pixel_resp
+    # Keitaro postback removed; ensure field is empty
+    lead.keitaro_resp = None
     
-    # Send to Keitaro
-    keitaro_resp = send_keitaro_postback(click, lead)
-    lead.keitaro_resp = keitaro_resp
-    
-    # Update lead status based on responses
-    if pixel_resp.get('success') and keitaro_resp.get('success'):
+    # Update lead status based on response
+    if pixel_resp.get('success'):
         lead.status = 'success'
     else:
         lead.status = 'error'
@@ -437,7 +445,7 @@ def create_lead():
         'lead_id': lead.id,
         'status': lead.status,
         'pixel_response': pixel_resp,
-        'keitaro_response': keitaro_resp
+        'keitaro_response': None
     })
 
 # Setup conversion logging
@@ -470,22 +478,49 @@ def send_facebook_capi(click, lead, access_token):
                 "event_time": int(lead.ts.timestamp()),
                 "event_id": click.server_sub_id,
                 "action_source": "website",
-                "user_data": {
-                    "client_ip_address": click.ip,
-                    "client_user_agent": click.ua,
-                    "fbp": click.fbp,
-                    "fbc": click.fbc,
-                    "fbclid": click.fbclid
-                }
+                "user_data": {}
             }],
             "access_token": access_token
         }
+        # Fill user_data only with non-empty values; do not send fbclid (unsupported by CAPI)
+        ud = event["data"][0]["user_data"]
+        if click.ip:
+            ud["client_ip_address"] = click.ip
+        if click.ua:
+            ud["client_user_agent"] = click.ua
+        if click.fbp:
+            ud["fbp"] = click.fbp
+        if click.fbc:
+            ud["fbc"] = click.fbc
+        elif click.fbclid:
+            ud["fbc"] = f"fb.1.{int(lead.ts.timestamp())}.{click.fbclid}"
+        # Optional event_source_url from landing page
+        if click.landing_url:
+            event["data"][0]["event_source_url"] = click.landing_url
         # Do not include value if revenue is not provided
+        custom = {}
         if lead.revenue is not None:
-            event["data"][0]["custom_data"] = {
+            custom.update({
                 "value": float(lead.revenue),
                 "currency": lead.currency
-            }
+            })
+        # Include UTM and routing context as custom_data
+        if click.utm_source:
+            custom["utm_source"] = click.utm_source
+        if click.utm_medium:
+            custom["utm_medium"] = click.utm_medium
+        if click.utm_campaign:
+            custom["utm_campaign"] = click.utm_campaign
+        if click.utm_content:
+            custom["utm_content"] = click.utm_content
+        if click.utm_term:
+            custom["utm_term"] = click.utm_term
+        if click.route:
+            custom["route"] = click.route
+        if click.referrer:
+            custom["referrer"] = click.referrer
+        if custom:
+            event["data"][0]["custom_data"] = custom
         event_data = event
         
         owner_id = click.chat_link.owner_id if click.chat_link else None
@@ -531,59 +566,7 @@ def send_facebook_capi(click, lead, access_token):
             'error': str(e)
         }
 
-def send_keitaro_postback(click, lead):
-    """Send S2S postback to Keitaro"""
-    try:
-        keitaro_url = os.getenv('KEITARO_POSTBACK_URL')
-        if not keitaro_url:
-            return {'success': False, 'error': 'Keitaro URL not configured'}
-        
-        # Replace placeholders
-        url = keitaro_url.format(
-            subid=click.keitaro_sub_id or click.server_sub_id,
-            status=lead.status,
-            revenue=float(lead.revenue or 0),
-            currency=lead.currency
-        )
-        
-        owner_id = click.chat_link.owner_id if click.chat_link else None
-        manager_slug = click.chat_link.owner.slug if (click.chat_link and click.chat_link.owner and hasattr(click.chat_link.owner, 'slug')) else None
-        conversion_logger.info(json.dumps({
-            'type': 'keitaro_request',
-            'server_sub_id': click.server_sub_id,
-            'url': url,
-            'owner_id': owner_id,
-            'manager_slug': manager_slug
-        }, ensure_ascii=False))
-
-        response = requests.get(url, timeout=30)
-        
-        result = {
-            'success': response.status_code == 200,
-            'status_code': response.status_code,
-            'response': response.text
-        }
-        conversion_logger.info(json.dumps({
-            'type': 'keitaro_response',
-            'server_sub_id': click.server_sub_id,
-            'status_code': result['status_code'],
-            'response': result['response'],
-            'owner_id': owner_id,
-            'manager_slug': manager_slug
-        }, ensure_ascii=False))
-        return result
-    except Exception as e:
-        conversion_logger.error(json.dumps({
-            'type': 'keitaro_error',
-            'server_sub_id': click.server_sub_id,
-            'error': str(e),
-            'owner_id': owner_id,
-            'manager_slug': manager_slug
-        }, ensure_ascii=False))
-        return {
-            'success': False,
-            'error': str(e)
-        }
+## Keitaro postback removed
 
 # Admin routes
 @app.route('/admin')
@@ -742,6 +725,66 @@ def clear_capi_logs():
             pass
     return jsonify({'success': cleared})
 
+# Users management (admin only)
+@app.route('/api/users', methods=['GET', 'POST'])
+@login_required
+def users_api():
+    if not current_user.is_admin:
+        return jsonify({'error': 'Forbidden'}), 403
+    if request.method == 'GET':
+        users = User.query.order_by(User.id.asc()).all()
+        return jsonify([{
+            'id': u.id,
+            'email': u.email,
+            'role': u.role,
+            'slug': u.slug
+        } for u in users])
+    data = request.get_json() or {}
+    action = data.get('action')
+    if action == 'create':
+        email = data.get('email')
+        password = data.get('password')
+        role = data.get('role', 'manager')
+        slug = data.get('slug')
+        if not email or not password:
+            return jsonify({'error': 'Email and password are required'}), 400
+        if User.query.filter_by(email=email).first():
+            return jsonify({'error': 'User with this email already exists'}), 400
+        user = User(email=email, role=role, slug=slug)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({'success': True, 'id': user.id})
+    elif action == 'delete':
+        user_id = data.get('id')
+        if not user_id:
+            return jsonify({'error': 'User id required'}), 400
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        if user.id == current_user.id:
+            return jsonify({'error': 'Cannot delete yourself'}), 400
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'success': True})
+    elif action == 'update':
+        user_id = data.get('id')
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        if 'email' in data:
+            user.email = data['email']
+        if 'role' in data:
+            user.role = data['role']
+        if 'slug' in data:
+            user.slug = data['slug']
+        if 'password' in data and data['password']:
+            user.set_password(data['password'])
+        db.session.commit()
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'Unknown action'}), 400
+
 @app.route('/api/clear-database', methods=['POST'])
 @login_required
 def clear_database():
@@ -752,20 +795,41 @@ def clear_database():
         return jsonify({'error': 'Неверный пароль'}), 400
     
     try:
-        # Delete all data from all tables
-        db.session.query(CtaClick).delete()
-        db.session.query(Redirect).delete()
-        db.session.query(Lead).delete()
-        db.session.query(Click).delete()
-        db.session.query(ChatLink).delete()
-        db.session.query(PixelSetting).delete()
-        
-        # Keep admin user
-        # db.session.query(User).delete()
-        
+        # Fast data+identity reset per dialect (no schema drop to avoid long locks)
+        from sqlalchemy import text
+        bind = db.session.get_bind()
+        dialect = getattr(bind.dialect, 'name', '') if bind else ''
+
+        if dialect in ('postgresql', 'postgres'):
+            db.session.execute(text(
+                'TRUNCATE TABLE cta_click, redirect, lead, click, chat_link, pixel_setting, "user" RESTART IDENTITY CASCADE'
+            ))
+        else:
+            # Fallback (SQLite, etc.)
+            db.session.query(CtaClick).delete()
+            db.session.query(Redirect).delete()
+            db.session.query(Lead).delete()
+            db.session.query(Click).delete()
+            db.session.query(ChatLink).delete()
+            db.session.query(PixelSetting).delete()
+            # Reset sqlite autoincrement if available
+            try:
+                db.session.execute(text(
+                    "DELETE FROM sqlite_sequence WHERE name IN ('cta_click','redirect','lead','click','chat_link','pixel_setting','user')"
+                ))
+            except Exception:
+                pass
+
+        # Recreate admin if missing
+        admin_email = os.getenv('ADMIN_EMAIL', 'admin@example.com')
+        admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
+        if not User.query.filter_by(email=admin_email).first():
+            admin = User(email=admin_email, role='admin')
+            admin.set_password(admin_password)
+            db.session.add(admin)
+
         db.session.commit()
-        
-        return jsonify({'success': True, 'message': 'База данных очищена успешно'})
+        return jsonify({'success': True, 'message': 'Данные очищены, ID сброшены'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Ошибка очистки базы данных: {str(e)}'}), 500
@@ -824,18 +888,26 @@ def dashboard_stats():
 @app.route('/api/dashboard/charts')
 @login_required
 def dashboard_charts():
-    # Clicks by day (last 7 days)
+    # Clicks by day (last 7 days), dialect-aware date grouping
     from datetime import datetime, timedelta
     end_date = datetime.utcnow()
     start_date = end_date - timedelta(days=7)
+    bind = db.session.get_bind()
+    dialect = getattr(bind.dialect, 'name', '') if bind else ''
+    if dialect == 'sqlite':
+        date_expr = db.func.strftime('%Y-%m-%d', Click.ts)
+    elif dialect in ('postgresql', 'postgres'):
+        date_expr = db.func.date(db.func.date_trunc('day', Click.ts))
+    else:
+        date_expr = db.func.date(Click.ts)
     
     clicks_query = db.session.query(
-        db.func.date(Click.ts).label('date'),
+        date_expr.label('date'),
         db.func.count(Click.id).label('count')
     ).filter(Click.ts >= start_date)
     if current_user.role == 'manager':
         clicks_query = clicks_query.join(ChatLink, Click.chat_link_id == ChatLink.id).filter(ChatLink.owner_id == current_user.id)
-    clicks_by_day = clicks_query.group_by(db.func.date(Click.ts)).all()
+    clicks_by_day = clicks_query.group_by(date_expr).all()
     
     # Sources distribution
     sources_query = db.session.query(
@@ -851,11 +923,11 @@ def dashboard_charts():
     clicks_data = [0] * 7
     
     for click in clicks_by_day:
-        # db.func.date may return str (SQLite) or date (Postgres). Normalize to 'YYYY-MM-DD'.
+        # Normalize to 'YYYY-MM-DD'.
         date_str = click.date.strftime('%Y-%m-%d') if hasattr(click.date, 'strftime') else str(click.date)
         if date_str in dates:
             idx = dates.index(date_str)
-            clicks_data[idx] = click.count
+            clicks_data[idx] = int(click.count or 0)
     
     sources_labels = [s.utm_source for s in sources]
     sources_data = [s.count for s in sources]

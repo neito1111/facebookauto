@@ -12,7 +12,6 @@ class AdminPanel {
         this.setupTabs();
         this.loadDashboard();
         this.setupEventListeners();
-        this.setupMobileMenu();
     }
 
     setupSocket() {
@@ -384,7 +383,7 @@ class AdminPanel {
                 <td>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-success" title="Lead" onclick="adminPanel.createLeadFromCta('Lead','${cta.server_sub_id}')"><i class="fas fa-check"></i></button>
-                        <button class="btn btn-warning" title="Purchase" onclick="adminPanel.createLeadFromCta('Purchase','${cta.server_sub_id}')"><i class="fas fa-shopping-cart"></i></button>
+                        <button class="btn btn-warning" title="Subscribe" onclick="adminPanel.createLeadFromCta('Subscribe','${cta.server_sub_id}')"><i class="fas fa-bell"></i></button>
                         <button class="btn btn-danger" title="Reject" onclick="adminPanel.createLeadFromCta('Reject','${cta.server_sub_id}')"><i class="fas fa-times"></i></button>
                     </div>
                 </td>
@@ -509,7 +508,7 @@ class AdminPanel {
         switch(status) {
             case 'success': return 'bg-success';
             case 'Lead': return 'bg-primary';
-            case 'Purchase': return 'bg-warning';
+            case 'Subscribe': return 'bg-warning';
             case 'Reject': return 'bg-danger';
             case 'error': return 'bg-danger';
             default: return 'bg-secondary';
@@ -710,29 +709,6 @@ class AdminPanel {
 
     setupEventListeners() {
         // Add any additional event listeners here
-    }
-
-    setupMobileMenu() {
-        const btn = document.getElementById('mobile-menu-btn');
-        const sidebar = document.querySelector('.sidebar');
-        if (btn && sidebar) {
-            btn.addEventListener('click', () => {
-                sidebar.classList.toggle('open');
-            });
-        }
-        // Close sidebar when switching tabs on mobile
-        const tabLinks = document.querySelectorAll('[data-tab]');
-        tabLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth < 768 && sidebar) sidebar.classList.remove('open');
-            });
-        });
-        // Resize charts on orientation change
-        window.addEventListener('orientationchange', () => {
-            setTimeout(() => {
-                if (this.currentTab === 'dashboard') this.loadDashboard();
-            }, 300);
-        });
     }
 
     // Filtering methods

@@ -81,15 +81,10 @@
     </style>
 </head>
 <body>
-    <div class="mobile-header d-md-none">
-        <button class="btn btn-sm btn-outline-secondary" id="mobile-menu-btn"><i class="fas fa-bars"></i></button>
-        <div class="fw-bold">Tracking Panel</div>
-        <a class="btn btn-sm btn-outline-secondary" href="/logout"><i class="fas fa-sign-out-alt"></i></a>
-    </div>
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block sidebar">
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
                 <div class="position-sticky pt-3">
                     <div class="text-center mb-4">
                         <h4 class="text-white">📊 Tracking Panel</h4>
@@ -438,7 +433,7 @@
                             <select class="form-select" id="status-filter">
                                 <option value="">Все статусы</option>
                                 <option value="Lead">Lead</option>
-                                <option value="Purchase">Purchase</option>
+                                <option value="Subscribe">Subscribe</option>
                                 <option value="Reject">Reject</option>
                                 <option value="success">Success</option>
                                 <option value="error">Error</option>
