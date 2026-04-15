@@ -27,6 +27,11 @@
     }
 
     function getMountTarget() {
+        const explicitSlot = document.querySelector(".theme-switcher-slot");
+        if (explicitSlot) {
+            return explicitSlot;
+        }
+
         if (document.body.classList.contains("admin-shell")) {
             if (window.matchMedia("(max-width: 767.98px)").matches) {
                 return document.querySelector(".mobile-header");

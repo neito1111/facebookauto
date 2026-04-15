@@ -11,9 +11,23 @@
 </head>
 <body class="login-shell">
     <main class="auth-shell auth-shell--compact">
-        <section class="auth-panel glass-card fade-in-up">
-            <div class="brand-line">
-                <h1>Tracking Panel</h1>
+        <section class="auth-panel auth-panel--refined auth-panel--login glass-card fade-in-up">
+            <div class="auth-topbar">
+                <div class="brand-lockup">
+                    <div class="brand-mark">
+                        <span></span>
+                    </div>
+                    <div class="brand-copy">
+                        <div class="auth-kicker">Admin</div>
+                        <h1>Tracking Panel</h1>
+                    </div>
+                </div>
+                <div class="theme-switcher-slot" aria-label="Theme switcher slot"></div>
+            </div>
+
+            <div class="auth-intro">
+                <h2>Вход</h2>
+                <p>Авторизация администратора.</p>
             </div>
 
             {% if error %}
@@ -48,12 +62,6 @@
                 </button>
             </form>
 
-            <div class="auth-footer">
-                <small class="text-muted">
-                    <i class="fas fa-info-circle me-1"></i>
-                    admin@example.com / admin123
-                </small>
-            </div>
         </section>
     </main>
 
