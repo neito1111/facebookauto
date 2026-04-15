@@ -1,49 +1,59 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админ-панель - Facebook Tracking System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/theme.css') }}" rel="stylesheet">
+    <link href="{{ asset_url('css/theme.css') }}" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <link rel="icon" href="https://img.icons8.com/?size=100&id=118497&format=png&color=000000" type="image/x-icon">
     <style>
         .sidebar {
             min-height: 100vh;
             background: #2c3e50;
         }
+
         .sidebar .nav-link {
             color: #ecf0f1;
             padding: 12px 20px;
             border-radius: 5px;
             margin: 5px 10px;
         }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
             background: #34495e;
             color: #3498db;
         }
+
         .main-content {
             background: #f8f9fa;
             min-height: 100vh;
         }
+
         .stats-card {
             background: white;
             border-radius: 10px;
             padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
+
         .table-responsive {
             background: white;
             border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
+
         .badge-status {
             font-size: 0.8em;
         }
+
         .click-card {
             border: 1px solid #dee2e6;
             border-radius: 8px;
@@ -53,34 +63,102 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
+
         .click-card:hover {
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             transform: translateY(-2px);
         }
+
         .click-card.selected {
             border-color: #007bff;
             background: #f8f9ff;
         }
+
         .modal-lg {
             max-width: 90%;
         }
+
         .real-time-indicator {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 1000;
         }
+
         .pulse {
             animation: pulse 2s infinite;
         }
+
         @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .nav-dropdown {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+
+        .nav-dropdown-item {
+            padding: 8px 20px 8px 50px;
+            color: #ecf0f1;
+            display: block;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 2px 10px;
+            font-size: 0.9em;
+        }
+
+        .nav-dropdown-item:hover {
+            background: #34495e;
+            color: #3498db;
+        }
+
+        .nav-dropdown-item.active {
+            background: #34495e;
+            color: #3498db;
+        }
+
+        .nav-dropdown-toggle {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .nav-dropdown-toggle::after {
+            content: '\f107';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            float: right;
+            transition: transform 0.3s;
+        }
+
+        .nav-dropdown-toggle.collapsed::after {
+            transform: rotate(-90deg);
+        }
+
+        .nav-dropdown-menu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .nav-dropdown-menu.show {
+            max-height: 500px;
         }
     </style>
 </head>
-<body>
+
+<body class="admin-shell">
     <div class="mobile-header d-md-none">
         <button class="btn btn-sm btn-outline-secondary" id="mobile-menu-btn"><i class="fas fa-bars"></i></button>
         <div class="fw-bold">Tracking Panel</div>
@@ -91,8 +169,20 @@
             <!-- Sidebar -->
             <nav class="col-md-3 col-lg-2 d-md-block sidebar">
                 <div class="position-sticky pt-3">
-                    <div class="text-center mb-4">
+                    <div class="sidebar-brand glass-card fade-in-up">
                         <h4 class="text-white">📊 Tracking Panel</h4>
+                        <p class="sidebar-copy mb-3">Минималистичная тёмная панель для аналитики, лендингов и лидов в одном рабочем пространстве.</p>
+                        <div id="current-user-info" class="sidebar-meta small mt-2">
+                            <i class="fas fa-user me-1"></i><span id="current-user-email">Загрузка...</span>
+                        </div>
+                        <div class="mt-2">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">Таймзона</span>
+                                <select class="form-select form-select-sm" id="timezone-select">
+                                    <option>Загрузка...</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                     <ul class="nav flex-column">
                         <li class="nav-item">
@@ -101,44 +191,61 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" data-tab="clicks">
-                                <i class="fas fa-mouse-pointer me-2"></i>Клики
-                            </a>
+                            <div class="nav-link nav-dropdown-toggle" data-dropdown="statistics">
+                                <i class="fas fa-chart-bar me-2"></i>Статистика
+                            </div>
+                            <ul class="nav-dropdown-menu" id="statistics-dropdown">
+                                <li><a class="nav-dropdown-item" href="#" data-tab="clicks"><i
+                                            class="fas fa-mouse-pointer me-2"></i>Клики</a></li>
+                                <li><a class="nav-dropdown-item" href="#" data-tab="cta"><i
+                                            class="fas fa-hand-pointer me-2"></i>CTA Клики</a></li>
+                                <li><a class="nav-dropdown-item" href="#" data-tab="leads"><i
+                                            class="fas fa-users me-2"></i>Лиды</a></li>
+                                <li><a class="nav-dropdown-item" href="#" data-tab="purchases"><i
+                                            class="fas fa-shopping-cart me-2"></i>Покупки</a></li>
+                                <li><a class="nav-dropdown-item" href="#" data-tab="reports"><i
+                                            class="fas fa-chart-line me-2"></i>Отчеты</a></li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-item">
+                            <div class="nav-link nav-dropdown-toggle" data-dropdown="users-landings">
+                                <i class="fas fa-user-cog me-2"></i>Пользователи и лендинги
+                            </div>
+                            <ul class="nav-dropdown-menu" id="users-landings-dropdown">
+                                <li><a class="nav-dropdown-item" href="#" data-tab="users"><i
+                                            class="fas fa-user-cog me-2"></i>Пользователи</a></li>
+                                <li><a class="nav-dropdown-item" href="#" data-tab="landings"><i
+                                            class="fas fa-globe me-2"></i>Лендинги</a></li>
+                                <li><a class="nav-dropdown-item" href="#" data-tab="phrases"><i
+                                            class="fas fa-comment-dots me-2"></i>Фразы менеджеров</a></li>
+                            </ul>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" data-tab="cta">
-                                <i class="fas fa-hand-pointer me-2"></i>CTA Клики
-                            </a>
+                            <div class="nav-link nav-dropdown-toggle" data-dropdown="settings">
+                                <i class="fas fa-cog me-2"></i>Настройки
+                            </div>
+                            <ul class="nav-dropdown-menu" id="settings-dropdown">
+                                <li><a class="nav-dropdown-item" href="#" data-tab="pixel-settings"><i
+                                            class="fas fa-cog me-2"></i>Настройки Pixel</a></li>
+                                <li><a class="nav-dropdown-item" href="#" data-tab="keitaro"><i
+                                            class="fas fa-exchange-alt me-2"></i>Keitaro</a></li>
+                            </ul>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" data-tab="redirects">
-                                <i class="fas fa-external-link-alt me-2"></i>Редиректы
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-tab="leads">
-                                <i class="fas fa-users me-2"></i>Лиды
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-tab="chat-links">
-                                <i class="fas fa-link me-2"></i>Бизнес-ссылки
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-tab="pixel-settings">
-                                <i class="fas fa-cog me-2"></i>Настройки Pixel
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-tab="logs">
-                                <i class="fas fa-file-alt me-2"></i>Логи
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-tab="users">
-                                <i class="fas fa-user-cog me-2"></i>Пользователи
-                            </a>
+                            <div class="nav-link nav-dropdown-toggle" data-dropdown="logs-redirects">
+                                <i class="fas fa-file-alt me-2"></i>Логи и редиректы
+                            </div>
+                            <ul class="nav-dropdown-menu" id="logs-redirects-dropdown">
+                                <li><a class="nav-dropdown-item" href="#" data-tab="logs"><i
+                                            class="fas fa-file-alt me-2"></i>Логи</a></li>
+                                <li><a class="nav-dropdown-item" href="#" data-tab="bot-logs"><i
+                                            class="fas fa-robot me-2"></i>Логи ботов</a></li>
+                                <li><a class="nav-dropdown-item" href="#" data-tab="redirects"><i
+                                            class="fas fa-external-link-alt me-2"></i>Редиректы</a></li>
+                                <li><a class="nav-dropdown-item" href="#" data-tab="invalid-clicks"><i
+                                            class="fas fa-exclamation-triangle me-2"></i>Некорректные клики</a></li>
+                            </ul>
                         </li>
                         <li class="nav-item mt-3">
                             <a class="nav-link text-danger" href="/logout">
@@ -150,7 +257,7 @@
             </nav>
 
             <!-- Main content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content admin-main">
                 <div class="real-time-indicator">
                     <span class="badge bg-success pulse" id="connection-status">
                         <i class="fas fa-circle me-1"></i>Подключено
@@ -159,12 +266,73 @@
 
                 <!-- Dashboard Tab -->
                 <div id="dashboard" class="tab-content">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <section class="dashboard-intro glass-card fade-in-up">
+                        <div>
+                            <span class="eyebrow">Dark Workspace</span>
+                            <h1>Панель управления трафиком</h1>
+                            <p>Вся ключевая аналитика, пользователи, лендинги и рабочие действия собраны в спокойном и современном интерфейсе.</p>
+                        </div>
+                        <div class="dashboard-intro-meta">
+                            <div class="metric-chip"><i class="fas fa-chart-line"></i><span>Live data</span></div>
+                            <div class="metric-chip"><i class="fas fa-moon"></i><span>Minimal UI</span></div>
+                            <div class="metric-chip"><i class="fas fa-layer-group"></i><span>One workspace</span></div>
+                        </div>
+                    </section>
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                         <h1 class="h2">Дашборд</h1>
                         <div class="btn-toolbar mb-2 mb-md-0">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshDashboard()">
-                                <i class="fas fa-sync-alt me-1"></i>Обновить
+                            <div class="btn-group me-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                                    data-bs-toggle="dropdown" aria-expanded="false" id="dashboard-date-range-btn">
+                                    <i class="far fa-calendar-alt me-1"></i><span
+                                        id="dashboard-date-range-label">Сегодня</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" id="dashboard-date-range-menu">
+                                    <li><a class="dropdown-item active" href="#" data-range="today">Сегодня</a></li>
+                                    <li><a class="dropdown-item" href="#" data-range="yesterday">Вчера</a></li>
+                                    <li><a class="dropdown-item" href="#" data-range="week">Текущая неделя</a></li>
+                                    <li><a class="dropdown-item" href="#" data-range="last7">Последние 7 дней</a></li>
+                                    <li><a class="dropdown-item" href="#" data-range="month">Текущий месяц</a></li>
+                                    <li><a class="dropdown-item" href="#" data-range="last30">Последние 30 дней</a></li>
+                                    <li><a class="dropdown-item" href="#" data-range="prev_month">Предыдущий месяц</a>
+                                    </li>
+                                    <li>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li><a class="dropdown-item" href="#" data-range="custom">Интервал дат...</a></li>
+                                </ul>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                onclick="adminPanel.loadDashboard()">
+                                <i class="fas fa-sync-alt me-1"></i>
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Custom Date Range Modal for Dashboard -->
+                    <div class="modal fade" id="dashboardDateRangeModal" tabindex="-1">
+                        <div class="modal-dialog modal-sm">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Выбор периода</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">От</label>
+                                        <input type="date" class="form-control" id="dashboard-date-from">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">До</label>
+                                        <input type="date" class="form-control" id="dashboard-date-to">
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-primary w-100"
+                                        onclick="adminPanel.applyCustomDashboardDate()">Применить</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -228,7 +396,26 @@
                     <div class="row">
                         <div class="col-md-8">
                             <div class="stats-card">
-                                <h5>Клики по дням</h5>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="mb-0">Динамика по дням</h5>
+                                    <div class="btn-group btn-group-sm" role="group" id="chart-toggles">
+                                        <input type="checkbox" class="btn-check" id="toggle-clicks" checked
+                                            onchange="adminPanel.toggleChartDataset(0)">
+                                        <label class="btn btn-outline-primary" for="toggle-clicks">Клики</label>
+
+                                        <input type="checkbox" class="btn-check" id="toggle-cta" checked
+                                            onchange="adminPanel.toggleChartDataset(1)">
+                                        <label class="btn btn-outline-warning" for="toggle-cta">CTA</label>
+
+                                        <input type="checkbox" class="btn-check" id="toggle-leads" checked
+                                            onchange="adminPanel.toggleChartDataset(2)">
+                                        <label class="btn btn-outline-success" for="toggle-leads">Лиды</label>
+
+                                        <input type="checkbox" class="btn-check" id="toggle-purchases" checked
+                                            onchange="adminPanel.toggleChartDataset(3)">
+                                        <label class="btn btn-outline-danger" for="toggle-purchases">Покупки</label>
+                                    </div>
+                                </div>
                                 <div class="chart-box">
                                     <canvas id="clicksChart"></canvas>
                                 </div>
@@ -243,15 +430,68 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Landings performance -->
+                    <div class="row mb-4 mt-4">
+                        <div class="col-md-4 col-lg-3 mb-3 mb-md-0">
+                            <div class="stats-card glass-card h-100">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="text-muted mb-1">Лучший лендинг</h6>
+                                        <h4 class="mb-1" id="best-landing-name">—</h4>
+                                        <div class="small text-muted" id="best-landing-folder">Нет данных</div>
+                                        <div class="mt-2" id="best-landing-meta"></div>
+                                    </div>
+                                    <div class="text-danger">
+                                        <i class="fas fa-fire fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8 col-lg-9">
+                            <div class="stats-card h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="mb-0">Топ лендинги</h5>
+                                    <small class="text-muted" id="landing-stats-total">Нет данных</small>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Значение</th>
+                                                <th>Менеджер</th>
+                                                <th>Клики</th>
+                                                <th>CR Lead</th>
+                                                <th>CR Sale</th>
+                                                <th>Цена</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="landing-stats-body">
+                                            <tr>
+                                                <td colspan="7" class="text-muted text-center py-3">Нет данных</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Clicks Tab -->
                 <div id="clicks" class="tab-content" style="display: none;">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                         <h1 class="h2">Клики</h1>
                         <div class="btn-toolbar mb-2 mb-md-0">
-                            <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="adminPanel.loadClicks()">
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                onclick="adminPanel.loadClicks()">
                                 <i class="fas fa-sync-alt me-1"></i>Обновить
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-info me-2"
+                                onclick="adminPanel.updateClicksGeo()" title="Обновить гео-данные для кликов без гео">
+                                <i class="fas fa-globe me-1"></i>Обновить гео
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportClicks()">
                                 <i class="fas fa-download me-1"></i>Экспорт CSV
@@ -262,7 +502,8 @@
                     <!-- Filters -->
                     <div class="row mb-3">
                         <div class="col-md-3">
-                            <input type="text" class="form-control" id="search-clicks" placeholder="Поиск по IP, fbclid...">
+                            <input type="text" class="form-control" id="search-clicks"
+                                placeholder="Поиск по IP, fbclid...">
                         </div>
                         <div class="col-md-2">
                             <input type="date" class="form-control" id="date-from">
@@ -293,10 +534,11 @@
                                     <th>ID</th>
                                     <th>Время</th>
                                     <th>IP</th>
+                                    <th>Гео</th>
                                     <th>Источник</th>
                                     <th>UTM Campaign</th>
                                     <th>fbclid</th>
-                                    <th>Chat Link</th>
+                                    <th>Параметры</th>
                                     <th>Действия</th>
                                 </tr>
                             </thead>
@@ -309,10 +551,12 @@
 
                 <!-- CTA Clicks Tab -->
                 <div id="cta" class="tab-content" style="display: none;">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                         <h1 class="h2">CTA Клики</h1>
                         <div class="btn-toolbar mb-2 mb-md-0">
-                            <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="adminPanel.loadCtaClicks()">
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                onclick="adminPanel.loadCtaClicks()">
                                 <i class="fas fa-sync-alt me-1"></i>Обновить
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportCtaClicks()">
@@ -324,7 +568,8 @@
                     <!-- Filters -->
                     <div class="row mb-3">
                         <div class="col-md-3">
-                            <input type="text" class="form-control" id="search-cta" placeholder="Поиск по server_sub_id...">
+                            <input type="text" class="form-control" id="search-cta"
+                                placeholder="Поиск по server_sub_id...">
                         </div>
                         <div class="col-md-2">
                             <input type="date" class="form-control" id="cta-date-from">
@@ -364,10 +609,12 @@
 
                 <!-- Redirects Tab -->
                 <div id="redirects" class="tab-content" style="display: none;">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                         <h1 class="h2">Редиректы</h1>
                         <div class="btn-toolbar mb-2 mb-md-0">
-                            <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="adminPanel.loadRedirects()">
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                onclick="adminPanel.loadRedirects()">
                                 <i class="fas fa-sync-alt me-1"></i>Обновить
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportRedirects()">
@@ -379,7 +626,8 @@
                     <!-- Filters -->
                     <div class="row mb-3">
                         <div class="col-md-3">
-                            <input type="text" class="form-control" id="search-redirects" placeholder="Поиск по server_sub_id...">
+                            <input type="text" class="form-control" id="search-redirects"
+                                placeholder="Поиск по server_sub_id...">
                         </div>
                         <div class="col-md-2">
                             <input type="date" class="form-control" id="redirects-date-from">
@@ -415,12 +663,42 @@
                     </div>
                 </div>
 
+                <!-- Purchases Tab -->
+                <div id="purchases" class="tab-content" style="display: none;">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">Покупки</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                onclick="adminPanel.loadPurchases()">
+                                <i class="fas fa-sync-alt me-1"></i>Обновить
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive glass-card">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Время</th>
+                                    <th>Server Sub ID</th>
+                                    <th>Сумма</th>
+                                    <th>Валюта</th>
+                                </tr>
+                            </thead>
+                            <tbody id="purchases-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Leads Tab -->
                 <div id="leads" class="tab-content" style="display: none;">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                         <h1 class="h2">Лиды</h1>
                         <div class="btn-toolbar mb-2 mb-md-0">
-                            <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="adminPanel.loadLeads()">
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                onclick="adminPanel.loadLeads()">
                                 <i class="fas fa-sync-alt me-1"></i>Обновить
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportLeads()">
@@ -432,7 +710,8 @@
                     <!-- Filters -->
                     <div class="row mb-3">
                         <div class="col-md-2">
-                            <input type="text" class="form-control" id="search-leads" placeholder="Поиск по server_sub_id...">
+                            <input type="text" class="form-control" id="search-leads"
+                                placeholder="Поиск по server_sub_id...">
                         </div>
                         <div class="col-md-2">
                             <select class="form-select" id="status-filter">
@@ -468,11 +747,12 @@
                                     <th>ID</th>
                                     <th>Server Sub ID</th>
                                     <th>Время</th>
-                                    <th>Статус</th>
+                                    <th>Статус / Сервисы</th>
                                     <th>Pixel ID</th>
                                     <th>Менеджер</th>
                                     <th>IP</th>
                                     <th>Источник</th>
+                                    <th>Действия</th>
                                 </tr>
                             </thead>
                             <tbody id="leads-table-body">
@@ -482,49 +762,126 @@
                     </div>
                 </div>
 
-                <!-- Chat Links Tab -->
-                <div id="chat-links" class="tab-content" style="display: none;">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                        <h1 class="h2">Бизнес-ссылки</h1>
+                <!-- Keitaro Tab -->
+                <div id="keitaro" class="tab-content" style="display: none;">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">Отбивка в Keitaro</h1>
                         <div class="btn-toolbar mb-2 mb-md-0">
-                            <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="adminPanel.loadChatLinks()">
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                onclick="adminPanel.loadKeitaroClicks()">
                                 <i class="fas fa-sync-alt me-1"></i>Обновить
-                            </button>
-                            <button type="button" class="btn btn-sm btn-primary" onclick="showAddChatLinkModal()">
-                                <i class="fas fa-plus me-1"></i>Добавить ссылку
                             </button>
                         </div>
                     </div>
 
-                    <!-- Chat Links Table -->
-                    <div class="table-responsive">
+                    <!-- Auto-send Keitaro Config -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row g-3 align-items-center">
+                                <div class="col-auto">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="auto-send-keitaro">
+                                        <label class="form-check-label" for="auto-send-keitaro">
+                                            Автоотбивка в Keitaro
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <button class="btn btn-sm btn-success" onclick="adminPanel.saveAppConfig()">
+                                        <i class="fas fa-save me-1"></i>Сохранить
+                                    </button>
+                                </div>
+                            </div>
+                            <small class="text-muted">При включении лиды и покупки будут автоматически отправляться в
+                                Keitaro при создании.</small>
+                        </div>
+                    </div>
+
+                    <!-- Telegram Bot Config -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Telegram Bot (автолиды)</h5>
+                            <div class="mb-3">
+                                <label class="form-label">Выберите менеджеров для запуска бота:</label>
+                                <div id="tgbot-managers-list" class="border rounded p-3"
+                                    style="max-height: 300px; overflow-y: auto;">
+                                    <div class="text-muted">Загрузка менеджеров...</div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-sm btn-outline-primary me-2"
+                                    onclick="adminPanel.selectAllManagers()">
+                                    Выбрать всех
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                    onclick="adminPanel.deselectAllManagers()">
+                                    Снять выбор
+                                </button>
+                                <button class="btn btn-sm btn-success" onclick="adminPanel.startSelectedBots()">
+                                    <i class="fas fa-play me-1"></i>Запустить выбранных
+                                </button>
+                                <button class="btn btn-sm btn-danger ms-2" onclick="adminPanel.stopAllBots()">
+                                    <i class="fas fa-stop me-1"></i>Остановить всех
+                                </button>
+                            </div>
+                            <small class="text-muted">Бот будет слушать входящие сообщения в Telegram и сопоставлять их
+                                с фразами из phrases.json для выбранных менеджеров.</small>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" id="search-keitaro"
+                                placeholder="Поиск по server_sub_id или keitaro_sub_id...">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="date" class="form-control" id="keitaro-date-from">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="date" class="form-control" id="keitaro-date-to">
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-primary" onclick="filterKeitaroClicks()">
+                                <i class="fas fa-filter me-1"></i>Фильтровать
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Keitaro Clicks Table -->
+                    <div class="table-responsive glass-card">
                         <table class="table table-hover">
                             <thead class="table-dark">
                                 <tr>
                                     <th>ID</th>
-                                    <th>Slug</th>
-                                    <th>Название</th>
-                                    <th>Сообщение</th>
-                                    <th>Маркер</th>
-                                    <th>Просмотры</th>
-                                    <th>Активна</th>
-                                    <th>Создана</th>
+                                    <th>Server Sub ID</th>
+                                    <th>Keitaro Sub ID</th>
+                                    <th>Время</th>
+                                    <th>IP</th>
+                                    <th>Источник</th>
+                                    <th>UTM Campaign</th>
+                                    <th>fbclid</th>
                                     <th>Действия</th>
                                 </tr>
                             </thead>
-                            <tbody id="chat-links-table-body">
+                            <tbody id="keitaro-table-body">
                                 <!-- Dynamic content -->
                             </tbody>
                         </table>
                     </div>
                 </div>
 
+                <!-- Бизнес-ссылки удалены -->
+
                 <!-- Pixel Settings Tab -->
                 <div id="pixel-settings" class="tab-content" style="display: none;">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                         <h1 class="h2">Настройки Pixel</h1>
                         <div class="btn-toolbar mb-2 mb-md-0">
-                            <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="adminPanel.loadPixelSettings()">
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                onclick="adminPanel.loadPixelSettings()">
                                 <i class="fas fa-sync-alt me-1"></i>Обновить
                             </button>
                             <button type="button" class="btn btn-sm btn-primary" onclick="showAddPixelModal()">
@@ -536,6 +893,38 @@
                         </div>
                     </div>
 
+                    <!-- Auto-send CTA to Pixel Config -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row g-3 align-items-center">
+                                <div class="col-auto">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="auto-send-cta">
+                                        <label class="form-check-label" for="auto-send-cta">
+                                            Автосоздание лида при CTA
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="col-form-label" for="auto-pixel-select">Пиксели:</label>
+                                </div>
+                                <div class="col-md-5 col-12">
+                                    <select class="form-select" id="auto-pixel-select" multiple size="4">
+                                        <option value="">Не выбрано</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <button class="btn btn-sm btn-success" onclick="adminPanel.saveAppConfig()">
+                                        <i class="fas fa-save me-1"></i>Сохранить
+                                    </button>
+                                </div>
+                            </div>
+                            <small class="text-muted">При включении каждый CTA клик будет автоматически отправляться как
+                                лид в выбранные Facebook Pixel. Используйте Ctrl/Cmd для выбора нескольких
+                                значений.</small>
+                        </div>
+                    </div>
+
                     <!-- Pixel Settings Table -->
                     <div class="table-responsive">
                         <table class="table table-hover">
@@ -544,6 +933,7 @@
                                     <th>ID</th>
                                     <th>Pixel ID</th>
                                     <th>Название</th>
+                                    <th>Тип события</th>
                                     <th>Активен</th>
                                     <th>Создан</th>
                                     <th>Действия</th>
@@ -558,20 +948,25 @@
 
                 <!-- Logs Tab (moved into main content) -->
                 <div id="logs" class="tab-content" style="display: none;">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                         <h1 class="h2">Логи CAPI/Keitaro</h1>
                         <div class="btn-toolbar mb-2 mb-md-0">
                             <div class="input-group input-group-sm me-2" style="width: 180px;">
                                 <span class="input-group-text">Строк</span>
-                                <input type="number" class="form-control" id="logs-lines" value="200" min="50" step="50">
+                                <input type="number" class="form-control" id="logs-lines" value="200" min="50"
+                                    step="50">
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="adminPanel.loadLogs()">
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                onclick="adminPanel.loadLogs()">
                                 <i class="fas fa-sync-alt me-1"></i>Обновить
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-danger me-2" onclick="adminPanel.clearLogs()">
+                            <button type="button" class="btn btn-sm btn-outline-danger me-2"
+                                onclick="adminPanel.clearLogs()">
                                 <i class="fas fa-trash me-1"></i>Очистить
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="logs-autorefresh-toggle" onclick="adminPanel.toggleLogsAutoRefresh()">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="logs-autorefresh-toggle"
+                                onclick="adminPanel.toggleLogsAutoRefresh()">
                                 <i class="fas fa-redo me-1"></i>Авто
                             </button>
                         </div>
@@ -579,17 +974,256 @@
 
                     <div class="glass-card p-3">
                         <div class="log-box">
-                            <pre id="logs-content" style="background: transparent; color: var(--text); margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 12px;"></pre>
+                            <pre id="logs-content"
+                                style="background: transparent; color: var(--text); margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 12px;"></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bot Logs Tab -->
+                <div id="bot-logs" class="tab-content" style="display: none;">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">Логи ботов</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <div class="input-group input-group-sm me-2" style="width: 200px;">
+                                <label class="input-group-text" for="bot-logs-manager">Менеджер</label>
+                                <select class="form-select" id="bot-logs-manager" onchange="adminPanel.loadBotLogs()">
+                                    <option value="">Выберите менеджера</option>
+                                </select>
+                            </div>
+                            <div class="input-group input-group-sm me-2" style="width: 180px;">
+                                <span class="input-group-text">Строк</span>
+                                <input type="number" class="form-control" id="bot-logs-lines" value="200" min="50"
+                                    step="50">
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                onclick="adminPanel.loadBotLogs()">
+                                <i class="fas fa-sync-alt me-1"></i>Обновить
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="bot-logs-autorefresh-toggle"
+                                onclick="adminPanel.toggleBotLogsAutoRefresh()">
+                                <i class="fas fa-redo me-1"></i>Авто
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-3">
+                        <div class="log-box">
+                            <pre id="bot-logs-content"
+                                style="background: transparent; color: var(--text); margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 12px; white-space: pre-wrap; word-wrap: break-word;"></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invalid Clicks Tab -->
+                <div id="invalid-clicks" class="tab-content" style="display: none;">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">Некорректные клики</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                onclick="adminPanel.loadInvalidClicks()">
+                                <i class="fas fa-sync-alt me-1"></i>Обновить
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                onclick="adminPanel.clearInvalidClicks()">
+                                <i class="fas fa-trash me-1"></i>Очистить
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive glass-card">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Время</th>
+                                    <th>IP</th>
+                                    <th>Гео</th>
+                                    <th>Источник</th>
+                                    <th>UTM Campaign</th>
+                                    <th>fbclid</th>
+                                    <th>Причина</th>
+                                    <th>URL</th>
+                                    <th>Подробнее</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invalid-clicks-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Phrases Tab -->
+                <div id="phrases" class="tab-content" style="display: none;">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">Фразы менеджеров</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <button type="button" class="btn btn-sm btn-primary" onclick="showAddPhraseModal()">
+                                <i class="fas fa-plus me-1"></i>Добавить фразу
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Manager Selection -->
+                    <div class="mb-3">
+                        <label class="form-label">Выберите менеджера:</label>
+                        <select class="form-select" id="phrases-manager-select" onchange="loadPhrasesForManager()">
+                            <option value="">-- Выберите менеджера --</option>
+                        </select>
+                    </div>
+
+                    <!-- Phrases Table -->
+                    <div class="table-responsive glass-card">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width: 60%">Фраза</th>
+                                    <th style="width: 30%">Метка (тег)</th>
+                                    <th style="width: 10%">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="phrases-table-body">
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">Выберите менеджера для просмотра фраз
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Reports Tab -->
+                <div id="reports" class="tab-content" style="display: none;">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">Отчеты</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                onclick="adminPanel.loadReports()">
+                                <i class="fas fa-sync-alt me-1"></i>Обновить
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Filters -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-2">
+                            <input type="date" class="form-control" id="reports-date-from" placeholder="Дата с">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="date" class="form-control" id="reports-date-to" placeholder="Дата по">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" id="reports-campaign" placeholder="UTM Campaign">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="reports-manager" disabled>
+                                <option value="">Все менеджеры</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" onclick="adminPanel.loadReports()">
+                                <i class="fas fa-filter me-1"></i>Фильтр
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Totals Cards -->
+                    <div id="reports-totals" class="mb-4"></div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="table-responsive glass-card">
+                                <table class="table table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Менеджер</th>
+                                            <th>Клики</th>
+                                            <th>CTA</th>
+                                            <th>Редиректы</th>
+                                            <th>Лиды</th>
+                                            <th>Покупки</th>
+                                            <th>CR CTA</th>
+                                            <th>CR Lead</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reports-by-manager"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="table-responsive glass-card">
+                                <table class="table table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>UTM Campaign</th>
+                                            <th>Клики</th>
+                                            <th>Лиды</th>
+                                            <th>Покупки</th>
+                                            <th>CR Лид</th>
+                                            <th>CR Покупка</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reports-by-campaign"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Managers Analytics Tab -->
+                <div id="managers-analytics" class="tab-content" style="display:none;">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">Аналитика по менеджерам</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                onclick="adminPanel.loadManagersAnalytics()">
+                                <i class="fas fa-sync-alt me-1"></i>Обновить
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Managers Stats Cards -->
+                    <div id="managers-stats-cards" class="row mb-4"></div>
+
+                    <!-- Managers Table -->
+                    <div class="table-responsive glass-card">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Менеджер</th>
+                                    <th>Email</th>
+                                    <th>Slug</th>
+                                    <th>Клики</th>
+                                    <th>CTA</th>
+                                    <th>Редиректы</th>
+                                    <th>Лиды</th>
+                                    <th>Ссылки</th>
+                                    <th>Конверсия CTA</th>
+                                    <th>Конверсия Лидов</th>
+                                    <th>Клики (7дн)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="managers-analytics-table-body"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Chart -->
+                    <div class="mt-4">
+                        <div class="stats-card">
+                            <h5 class="mb-3">Распределение кликов по менеджерам</h5>
+                            <canvas id="managersChart" height="100"></canvas>
                         </div>
                     </div>
                 </div>
 
                 <!-- Users Tab -->
                 <div id="users" class="tab-content" style="display:none;">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                         <h1 class="h2">Пользователи</h1>
                         <div class="btn-toolbar mb-2 mb-md-0">
-                            <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="adminPanel.loadUsers()">
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                onclick="adminPanel.loadUsers()">
                                 <i class="fas fa-sync-alt me-1"></i>Обновить
                             </button>
                             <button type="button" class="btn btn-sm btn-primary" onclick="showAddUserModal()">
@@ -605,10 +1239,54 @@
                                     <th>Email</th>
                                     <th>Роль</th>
                                     <th>Slug</th>
+                                    <th>Telegram Бот</th>
                                     <th>Действия</th>
                                 </tr>
                             </thead>
                             <tbody id="users-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Landings Tab -->
+                <div id="landings" class="tab-content" style="display:none;">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">Лендинги</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                onclick="adminPanel.loadLandings()">
+                                <i class="fas fa-sync-alt me-1"></i>Обновить
+                            </button>
+                            <button type="button" class="btn btn-sm btn-success me-2"
+                                onclick="showUploadLandingModal()">
+                                <i class="fas fa-upload me-1"></i>Загрузить ZIP
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="showAddLandingModal()">
+                                <i class="fas fa-plus me-1"></i>Добавить лендинг
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive glass-card">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Название</th>
+                                    <th>Папка</th>
+                                    <th>Менеджер</th>
+                                    <th>Параметр</th>
+                                    <th>Значение</th>
+                                    <th>Маркер</th>
+                                    <th>Цена</th>
+                                    <th>UTM Source</th>
+                                    <th>UTM Campaign</th>
+                                    <th>Активен</th>
+                                    <th>Создан</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="landings-table-body"></tbody>
                         </table>
                     </div>
                 </div>
@@ -661,6 +1339,14 @@
                             <label for="link-marker" class="form-label">Маркер (эмодзи)</label>
                             <input type="text" class="form-control" id="link-marker" placeholder="🔥">
                         </div>
+                        <div class="mb-3" id="link-owner-container" style="display: none;">
+                            <label for="link-owner" class="form-label">Владелец (менеджер)</label>
+                            <select class="form-select" id="link-owner">
+                                <option value="">Загрузка...</option>
+                            </select>
+                            <small class="form-text text-muted">Выберите менеджера, которому принадлежит эта
+                                ссылка</small>
+                        </div>
                         <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" id="link-active" checked>
                             <label class="form-check-label" for="link-active">Активна</label>
@@ -701,6 +1387,29 @@
                             <label for="pixel-token" class="form-label">Access Token</label>
                             <input type="password" class="form-control" id="pixel-token" required>
                         </div>
+                        <div class="mb-3">
+                            <label for="pixel-event-type" class="form-label">Тип события (Event Type)</label>
+                            <select class="form-select" id="pixel-event-type" required>
+                                <option value="Lead" selected>Lead</option>
+                                <option value="AddPaymentInfo">AddPaymentInfo</option>
+                                <option value="AddToCart">AddToCart</option>
+                                <option value="AddToWishlist">AddToWishlist</option>
+                                <option value="CompleteRegistration">CompleteRegistration</option>
+                                <option value="Contact">Contact</option>
+                                <option value="CustomizeProduct">CustomizeProduct</option>
+                                <option value="Donate">Donate</option>
+                                <option value="FindLocation">FindLocation</option>
+                                <option value="InitiateCheckout">InitiateCheckout</option>
+                                <option value="Purchase">Purchase</option>
+                                <option value="Schedule">Schedule</option>
+                                <option value="Search">Search</option>
+                                <option value="StartTrial">StartTrial</option>
+                                <option value="SubmitApplication">SubmitApplication</option>
+                                <option value="Subscribe">Subscribe</option>
+                                <option value="ViewContent">ViewContent</option>
+                            </select>
+                            <small class="form-text text-muted">Тип события, которое будет отправляться в Facebook при создании лида</small>
+                        </div>
                         <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" id="pixel-active" checked>
                             <label class="form-check-label" for="pixel-active">Активен</label>
@@ -737,10 +1446,75 @@
                             <label for="user-slug" class="form-label">Slug (опционально)</label>
                             <input type="text" class="form-control" id="user-slug" placeholder="manager1">
                         </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="user-enable-telegram"
+                                onchange="adminPanel.toggleTelegramFields()">
+                            <label class="form-check-label" for="user-enable-telegram">Подключить Telegram бот</label>
+                        </div>
+                        <div id="telegram-fields" style="display: none;">
+                            <div class="mb-3">
+                                <label for="user-tg-api-id" class="form-label">Telegram API ID *</label>
+                                <input type="text" class="form-control" id="user-tg-api-id" placeholder="12345678">
+                                <small class="form-text text-muted">Получите на <a href="https://my.telegram.org"
+                                        target="_blank">my.telegram.org</a></small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="user-tg-api-hash" class="form-label">Telegram API Hash *</label>
+                                <input type="text" class="form-control" id="user-tg-api-hash"
+                                    placeholder="abcdef1234567890abcdef1234567890">
+                            </div>
+                            <div class="mb-3">
+                                <label for="user-tg-session-name" class="form-label">Session Name *</label>
+                                <input type="text" class="form-control" id="user-tg-session-name"
+                                    placeholder="manager_session">
+                                <small class="form-text text-muted">Имя файла сессии (без расширения .session)</small>
+                            </div>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" onclick="saveUser()">Сохранить</button>
+                    <button type="button" class="btn btn-primary" onclick="adminPanel.saveUser()">Сохранить</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Редактировать пользователя</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-user-form">
+                        <input type="hidden" id="edit-user-id">
+                        <div class="mb-3">
+                            <label for="edit-user-email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="edit-user-email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-user-role" class="form-label">Роль</label>
+                            <select class="form-select" id="edit-user-role">
+                                <option value="manager">Менеджер</option>
+                                <option value="admin">Админ</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-user-slug" class="form-label">Slug</label>
+                            <input type="text" class="form-control" id="edit-user-slug" placeholder="manager1">
+                            <small class="form-text text-muted">Уникальный идентификатор для Telegram бота</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-user-password" class="form-label">Новый пароль (оставьте пустым, чтобы не менять)</label>
+                            <input type="password" class="form-control" id="edit-user-password" placeholder="Новый пароль">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="adminPanel.updateUser()">Сохранить</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 </div>
             </div>
@@ -757,11 +1531,12 @@
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-danger">
-                        <strong>Внимание!</strong> Это действие удалит ВСЕ данные из базы данных. Это действие необратимо!
+                        <strong>Внимание!</strong> Это действие удалит ВСЕ данные из базы данных. Это действие
+                        необратимо!
                     </div>
                     <div class="mb-3">
                         <label for="clear-password" class="form-label">Введите пароль для подтверждения:</label>
-                        <input type="password" class="form-control" id="clear-password" placeholder="Введите пароль 7788">
+                        <input type="password" class="form-control" id="clear-password" placeholder="Введите пароль">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -772,7 +1547,616 @@
         </div>
     </div>
 
+    <!-- Add/Edit Landing Modal -->
+    <div class="modal fade" id="addLandingModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="landing-modal-title">Добавить лендинг</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="landing-form">
+                        <input type="hidden" id="landing-id">
+                        <div class="mb-3">
+                            <label for="landing-name" class="form-label">Название *</label>
+                            <input type="text" class="form-control" id="landing-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="landing-folder" class="form-label">Папка (название папки в landings/) *</label>
+                            <input type="text" class="form-control" id="landing-folder" required placeholder="1">
+                            <small class="form-text text-muted">Название папки, которая уже существует в папке
+                                landings/</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="landing-param-key" class="form-label">Параметр (ключ)</label>
+                            <input type="text" class="form-control" id="landing-param-key" placeholder="variant">
+                            <small class="form-text text-muted">Ключ URL-параметра для выбора (например,
+                                variant)</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="landing-param-value" class="form-label">Значение параметра</label>
+                            <input type="text" class="form-control" id="landing-param-value" placeholder="A">
+                            <small class="form-text text-muted">Значение, при котором этот лендинг будет выбран</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="landing-marker" class="form-label">Маркер (для статистики)</label>
+                            <input type="text" class="form-control" id="landing-marker" placeholder="🔥">
+                            <small class="form-text text-muted">Отображается в статистике/логах для наглядности</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="landing-price" class="form-label">Цена</label>
+                            <input type="number" class="form-control" id="landing-price" step="0.01" min="0" placeholder="0.00">
+                            <small class="form-text text-muted">Цена лендинга (опционально)</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="landing-manager" class="form-label">Менеджер</label>
+                            <select class="form-select" id="landing-manager">
+                                <option value="">Не назначен</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="landing-utm-source" class="form-label">UTM Source</label>
+                            <input type="text" class="form-control" id="landing-utm-source" placeholder="facebook">
+                        </div>
+                        <div class="mb-3">
+                            <label for="landing-utm-campaign" class="form-label">UTM Campaign</label>
+                            <input type="text" class="form-control" id="landing-utm-campaign" placeholder="summer_sale">
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="landing-active" checked>
+                            <label class="form-check-label" for="landing-active">Активен</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="adminPanel.saveLanding()">Сохранить</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Telegram Credentials Modal -->
+    <div class="modal fade" id="editTelegramModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Редактировать Telegram credentials</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-telegram-form">
+                        <input type="hidden" id="edit-telegram-manager-slug">
+                        <div class="mb-3">
+                            <label class="form-label">Менеджер:</label>
+                            <div class="form-control bg-light" id="edit-telegram-manager-email"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-telegram-api-id" class="form-label">Telegram API ID *</label>
+                            <input type="text" class="form-control" id="edit-telegram-api-id" required
+                                placeholder="12345678">
+                            <small class="form-text text-muted">Получите на <a href="https://my.telegram.org"
+                                    target="_blank">my.telegram.org</a></small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-telegram-api-hash" class="form-label">Telegram API Hash *</label>
+                            <input type="text" class="form-control" id="edit-telegram-api-hash" required
+                                placeholder="abcdef1234567890abcdef1234567890">
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-telegram-session-name" class="form-label">Session Name *</label>
+                            <input type="text" class="form-control" id="edit-telegram-session-name" required
+                                placeholder="manager_session">
+                            <small class="form-text text-muted">Имя файла сессии (без расширения .session)</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary"
+                        onclick="adminPanel.saveTelegramCredentials()">Сохранить</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Landing Modal -->
+    <div class="modal fade" id="uploadLandingModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Загрузить лендинг (ZIP)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="upload-landing-form" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="landing-file" class="form-label">ZIP файл лендинга *</label>
+                            <input type="file" class="form-control" id="landing-file" accept=".zip" required>
+                            <small class="form-text text-muted">ZIP архив должен содержать index.php или index.html в
+                                корне или в подпапке</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" onclick="uploadLanding()">Загрузить</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Telegram Credentials Modal -->
+    <div class="modal fade" id="editCredentialsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-cog me-2"></i>Настройка Telegram API
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info mb-3">
+                        <strong>Менеджер:</strong> <span id="edit-creds-manager-email"></span>
+                    </div>
+
+                    <input type="hidden" id="edit-creds-manager-slug">
+
+                    <div class="mb-3">
+                        <label for="edit-creds-api-id" class="form-label">Telegram API ID *</label>
+                        <input type="text" class="form-control" id="edit-creds-api-id" placeholder="12345678" required>
+                        <small class="form-text text-muted">
+                            Получите на <a href="https://my.telegram.org/apps" target="_blank">my.telegram.org/apps</a>
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit-creds-api-hash" class="form-label">Telegram API Hash *</label>
+                        <input type="text" class="form-control" id="edit-creds-api-hash"
+                            placeholder="abcdef1234567890abcdef1234567890" required>
+                        <small class="form-text text-muted">
+                            32-символьный хэш с my.telegram.org/apps
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit-creds-session-name" class="form-label">Имя сессии (опционально)</label>
+                        <input type="text" class="form-control" id="edit-creds-session-name"
+                            placeholder="manager_session">
+                        <small class="form-text text-muted">
+                            По умолчанию: {slug}_session
+                        </small>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle me-2"></i>
+                        После сохранения credentials вам нужно будет авторизовать менеджера через кнопку "Авторизовать"
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="adminPanel.saveManagerCredentials()">
+                        <i class="fas fa-save me-2"></i>Сохранить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Phrase Modal -->
+    <div class="modal fade" id="addPhraseModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить фразу</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Менеджер</label>
+                        <input type="text" class="form-control" id="phrase-manager-name" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phrase-text" class="form-label">Текст фразы *</label>
+                        <textarea class="form-control" id="phrase-text" rows="3"
+                            placeholder="Например: Привет, меня зовут Ваня. Я за 3000 рублей к тебе обращаюсь!"
+                            required></textarea>
+                        <small class="form-text text-muted">Введите полный текст фразы, которую будет искать бот</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phrase-key" class="form-label">Метка (тег) *</label>
+                        <input type="text" class="form-control" id="phrase-key" placeholder="Например: Ваня3000"
+                            required>
+                        <small class="form-text text-muted">Уникальный идентификатор для этой фразы</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="savePhrase()">
+                        <i class="fas fa-save me-1"></i>Сохранить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Telegram Authorization Modal -->
+    <div class="modal fade" id="tgAuthModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fab fa-telegram me-2"></i>Авторизация Telegram
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="tg-auth-manager-info" class="alert alert-info mb-3">
+                        <strong>Менеджер:</strong> <span id="tg-auth-manager-name"></span>
+                    </div>
+
+                    <!-- Step 1: Phone Number -->
+                    <div id="tg-auth-step-phone" class="auth-step">
+                        <div class="mb-3">
+                            <label for="tg-auth-phone" class="form-label">Номер телефона *</label>
+                            <input type="tel" class="form-control" id="tg-auth-phone" placeholder="+380123456789"
+                                required>
+                            <small class="form-text text-muted">
+                                Введите номер телефона в международном формате (с кодом страны)
+                            </small>
+                        </div>
+                        <button type="button" class="btn btn-primary w-100" onclick="tgAuth.sendCode()">
+                            <i class="fas fa-paper-plane me-2"></i>Отправить код
+                        </button>
+                    </div>
+
+                    <!-- Step 2: Code -->
+                    <div id="tg-auth-step-code" class="auth-step" style="display: none;">
+                        <div class="alert alert-success mb-3">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Код отправлен на ваш Telegram
+                        </div>
+                        <div class="mb-3">
+                            <label for="tg-auth-code" class="form-label">Код подтверждения *</label>
+                            <input type="text" class="form-control" id="tg-auth-code" placeholder="12345" required
+                                maxlength="5">
+                            <small class="form-text text-muted">
+                                Введите код, который вы получили в Telegram
+                            </small>
+                        </div>
+                        <button type="button" class="btn btn-primary w-100" onclick="tgAuth.verifyCode()">
+                            <i class="fas fa-check me-2"></i>Подтвердить
+                        </button>
+                    </div>
+
+                    <!-- Step 3: 2FA Password (if needed) -->
+                    <div id="tg-auth-step-password" class="auth-step" style="display: none;">
+                        <div class="alert alert-warning mb-3">
+                            <i class="fas fa-lock me-2"></i>
+                            Требуется пароль двухфакторной аутентификации
+                        </div>
+                        <div class="mb-3">
+                            <label for="tg-auth-password" class="form-label">Пароль 2FA *</label>
+                            <input type="password" class="form-control" id="tg-auth-password"
+                                placeholder="Введите пароль" required>
+                            <small class="form-text text-muted">
+                                Введите пароль двухфакторной аутентификации
+                            </small>
+                        </div>
+                        <button type="button" class="btn btn-primary w-100" onclick="tgAuth.verifyWithPassword()">
+                            <i class="fas fa-unlock me-2"></i>Войти
+                        </button>
+                    </div>
+
+                    <!-- Success -->
+                    <div id="tg-auth-step-success" class="auth-step text-center" style="display: none;">
+                        <div class="mb-3">
+                            <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                        </div>
+                        <h4 class="text-success">Авторизация успешна!</h4>
+                        <p class="text-muted">Вы можете закрыть это окно и запустить бота.</p>
+                        <button type="button" class="btn btn-success" data-bs-dismiss="modal">
+                            Закрыть
+                        </button>
+                    </div>
+
+                    <!-- Error Alert -->
+                    <div id="tg-auth-error" class="alert alert-danger mt-3" style="display: none;">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span id="tg-auth-error-text"></span>
+                    </div>
+
+                    <!-- Loading Spinner -->
+                    <div id="tg-auth-loading" class="text-center" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Обработка...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <script src="{{ asset_url('js/tg-auth.js') }}"></script>
+    <script src="{{ asset_url('js/admin.js') }}"></script>
+
+    <script>
+        // Phrases management functions
+        let currentManagerSlug = null;
+        let managersData = [];
+
+        // Load managers list when phrases tab is opened
+        async function loadManagersForPhrases() {
+            try {
+                const response = await fetch('/api/users');
+                if (!response.ok) throw new Error('Failed to load managers');
+                const data = await response.json();
+                managersData = data.items.filter(u => u.role === 'manager' && u.slug);
+
+                const select = document.getElementById('phrases-manager-select');
+                select.innerHTML = '<option value="">-- Выберите менеджера --</option>';
+                managersData.forEach(manager => {
+                    const option = document.createElement('option');
+                    option.value = manager.slug;
+                    option.textContent = `${manager.email} (${manager.slug})`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading managers:', error);
+                alert('Ошибка загрузки списка менеджеров');
+            }
+        }
+
+        async function loadPhrasesForManager() {
+            const select = document.getElementById('phrases-manager-select');
+            currentManagerSlug = select.value;
+
+            if (!currentManagerSlug) {
+                document.getElementById('phrases-table-body').innerHTML =
+                    '<tr><td colspan="3" class="text-center text-muted">Выберите менеджера для просмотра фраз</td></tr>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/phrases/${currentManagerSlug}`);
+                if (!response.ok) throw new Error('Failed to load phrases');
+                const phrases = await response.json();
+
+                const tbody = document.getElementById('phrases-table-body');
+                if (phrases.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Нет фраз для этого менеджера</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                phrases.forEach(item => {
+                    const row = document.createElement('tr');
+                    const phraseEscaped = escapeHtml(item.phrase);
+                    const keyEscaped = escapeHtml(item.key);
+                    
+                    // Правильное экранирование для JavaScript строки
+                    const phraseForJS = item.phrase.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+                    const keyForJS = item.key.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    
+                    row.innerHTML = `
+                        <td>${phraseEscaped}</td>
+                        <td><span class="badge bg-primary">${keyEscaped}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-primary me-1" onclick="editPhrase('${phraseForJS}', '${keyForJS}')" title="Редактировать">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deletePhrase('${phraseForJS}')" title="Удалить">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading phrases:', error);
+                alert('Ошибка загрузки фраз');
+            }
+        }
+
+        let editingPhrase = null; // Хранит оригинальную фразу при редактировании
+
+        function showAddPhraseModal() {
+            // Всегда берем currentManagerSlug из select элемента
+            const select = document.getElementById('phrases-manager-select');
+            const managerSlug = select ? select.value : currentManagerSlug;
+            
+            if (!managerSlug) {
+                alert('Сначала выберите менеджера из списка выше');
+                return;
+            }
+            
+            // Обновляем глобальную переменную
+            currentManagerSlug = managerSlug;
+
+            editingPhrase = null;
+            const manager = managersData.find(m => m.slug === managerSlug);
+            const managerNameEl = document.getElementById('phrase-manager-name');
+            if (managerNameEl) {
+                managerNameEl.value = manager ? manager.email : managerSlug;
+            }
+            
+            const phraseTextEl = document.getElementById('phrase-text');
+            if (phraseTextEl) {
+                phraseTextEl.value = '';
+            }
+            
+            const phraseKeyEl = document.getElementById('phrase-key');
+            if (phraseKeyEl) {
+                phraseKeyEl.value = '';
+            }
+            
+            const modalTitle = document.querySelector('#addPhraseModal .modal-title');
+            if (modalTitle) {
+                modalTitle.textContent = 'Добавить фразу';
+            }
+            
+            const saveBtn = document.querySelector('#addPhraseModal .btn-primary');
+            if (saveBtn) {
+                saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Сохранить';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('addPhraseModal'));
+            modal.show();
+        }
+
+        function editPhrase(phrase, key) {
+            // Всегда берем currentManagerSlug из select элемента
+            const select = document.getElementById('phrases-manager-select');
+            const managerSlug = select ? select.value : currentManagerSlug;
+            
+            if (!managerSlug) {
+                alert('Менеджер не выбран. Выберите менеджера из списка выше.');
+                return;
+            }
+            
+            // Обновляем глобальную переменную
+            currentManagerSlug = managerSlug;
+
+            editingPhrase = phrase;
+            const manager = managersData.find(m => m.slug === managerSlug);
+            const managerNameEl = document.getElementById('phrase-manager-name');
+            if (managerNameEl) {
+                managerNameEl.value = manager ? manager.email : managerSlug;
+            }
+            
+            const phraseTextEl = document.getElementById('phrase-text');
+            if (phraseTextEl) {
+                phraseTextEl.value = phrase;
+            }
+            
+            const phraseKeyEl = document.getElementById('phrase-key');
+            if (phraseKeyEl) {
+                phraseKeyEl.value = key;
+            }
+            
+            const modalTitle = document.querySelector('#addPhraseModal .modal-title');
+            if (modalTitle) {
+                modalTitle.textContent = 'Редактировать фразу';
+            }
+            
+            const saveBtn = document.querySelector('#addPhraseModal .btn-primary');
+            if (saveBtn) {
+                saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Обновить';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('addPhraseModal'));
+            modal.show();
+        }
+
+        async function savePhrase() {
+            const phrase = document.getElementById('phrase-text').value.trim();
+            const key = document.getElementById('phrase-key').value.trim();
+
+            if (!phrase || !key) {
+                alert('Заполните все поля');
+                return;
+            }
+
+            // Всегда берем currentManagerSlug из select элемента
+            const select = document.getElementById('phrases-manager-select');
+            const managerSlug = select ? select.value : currentManagerSlug;
+            
+            if (!managerSlug) {
+                alert('Менеджер не выбран. Выберите менеджера из списка выше.');
+                return;
+            }
+            
+            // Обновляем глобальную переменную
+            currentManagerSlug = managerSlug;
+            
+            console.log(`Saving phrase for manager: ${managerSlug}, editing: ${!!editingPhrase}`);
+
+            try {
+                let response;
+                if (editingPhrase) {
+                    // Редактирование существующей фразы
+                    console.log(`PUT /api/phrases/${managerSlug}`, { old_phrase: editingPhrase, new_phrase: phrase, key: key });
+                    response = await fetch(`/api/phrases/${managerSlug}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            old_phrase: editingPhrase,
+                            new_phrase: phrase,
+                            key: key
+                        })
+                    });
+                } else {
+                    // Добавление новой фразы
+                    console.log(`POST /api/phrases/${managerSlug}`, { phrase, key });
+                    response = await fetch(`/api/phrases/${managerSlug}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phrase, key })
+                    });
+                }
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to save phrase');
+                }
+
+                bootstrap.Modal.getInstance(document.getElementById('addPhraseModal')).hide();
+                await loadPhrasesForManager();
+                alert(editingPhrase ? 'Фраза успешно обновлена' : 'Фраза успешно добавлена');
+                editingPhrase = null;
+            } catch (error) {
+                console.error('Error saving phrase:', error);
+                alert('Ошибка сохранения фразы: ' + error.message);
+            }
+        }
+
+        async function deletePhrase(phrase) {
+            if (!confirm(`Удалить фразу: "${phrase}"?`)) return;
+
+            try {
+                const response = await fetch(`/api/phrases/${currentManagerSlug}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phrase })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to delete phrase');
+                }
+
+                await loadPhrasesForManager();
+                alert('Фраза удалена');
+            } catch (error) {
+                console.error('Error deleting phrase:', error);
+                alert('Ошибка удаления фразы: ' + error.message);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load managers when phrases tab is opened
+        document.addEventListener('DOMContentLoaded', function () {
+            const phrasesTab = document.querySelector('[data-tab="phrases"]');
+            if (phrasesTab) {
+                phrasesTab.addEventListener('click', function () {
+                    loadManagersForPhrases();
+                });
+            }
+        });
+    </script>
+    <script src="{{ asset_url('js/theme-switcher.js') }}"></script>
 </body>
+
 </html>
