@@ -2654,18 +2654,7 @@ class AdminPanel {
             }
             const pixelIdText = pixelIds.length ? pixelIds.join(', ') : '-';
 
-            // Row styling based on services
             const row = document.createElement('tr');
-            if (hasFacebook && !hasKeitaro) {
-                row.classList.add('table-primary');
-                row.style.opacity = '0.9';
-            } else if (hasKeitaro && !hasFacebook) {
-                row.classList.add('table-info');
-                row.style.opacity = '0.9';
-            } else if (hasFacebook && hasKeitaro) {
-                row.classList.add('table-success');
-                row.style.opacity = '0.95';
-            }
 
             row.innerHTML = `
                 <td>${lead.id}</td>
