@@ -546,6 +546,13 @@ html[data-theme="blue"] .btn-close {
     padding: 32px;
 }
 
+.auth-panel,
+.landing-card,
+.sidebar-brand,
+.mobile-header {
+    position: relative;
+}
+
 .auth-panel h2,
 .hero-panel h2 {
     margin: 18px 0 12px;
@@ -792,22 +799,38 @@ code {
 }
 
 .theme-switcher {
-    position: fixed;
+    position: absolute;
     top: 18px;
     right: 18px;
-    bottom: auto;
-    z-index: 1085;
+    z-index: 2;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 8px;
+    padding: 6px;
     min-width: auto;
-    border-radius: 999px !important;
-    background: var(--panel-strong) !important;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--panel-strong) 94%, transparent);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
 }
 
-.admin-shell .theme-switcher {
-    right: 150px;
+.auth-panel .theme-switcher,
+.landing-card .theme-switcher {
+    top: 18px;
+    right: 18px;
+}
+
+.sidebar-brand .theme-switcher {
+    top: 18px;
+    right: 18px;
+}
+
+.mobile-header .theme-switcher {
+    position: static;
+    margin-left: auto;
+    margin-right: 8px;
+    box-shadow: none;
+    background: transparent;
 }
 
 .theme-switcher__buttons {
@@ -902,6 +925,10 @@ html[data-theme="light"] .theme-switcher__button.is-active {
         z-index: 1050;
     }
 
+    .mobile-header .fw-bold {
+        flex: 0 1 auto;
+    }
+
     .auth-copy,
     .hero-copy,
     .auth-panel,
@@ -933,10 +960,13 @@ html[data-theme="light"] .theme-switcher__button.is-active {
         overflow-x: auto;
     }
 
-    .theme-switcher,
-    .admin-shell .theme-switcher {
-        top: 12px;
-        right: 12px;
-        left: auto;
+    .theme-switcher {
+        top: 14px;
+        right: 14px;
+    }
+
+    .mobile-header .theme-switcher {
+        top: auto;
+        right: auto;
     }
 }

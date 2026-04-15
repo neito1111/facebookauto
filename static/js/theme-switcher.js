@@ -26,40 +26,59 @@
         });
     }
 
-    function buildSwitcher() {
-        if (document.querySelector(".theme-switcher")) {
-            syncButtons(getSavedTheme());
-            return;
+    function getMountTarget() {
+        if (document.body.classList.contains("admin-shell")) {
+            if (window.matchMedia("(max-width: 767.98px)").matches) {
+                return document.querySelector(".mobile-header");
+            }
+            return document.querySelector(".sidebar-brand") || document.querySelector(".main-content");
         }
 
-        const switcher = document.createElement("div");
-        switcher.className = "theme-switcher glass-card fade-in-up";
-        switcher.setAttribute("role", "group");
-        switcher.setAttribute("aria-label", "Переключатель темы");
+        return (
+            document.querySelector(".auth-panel") ||
+            document.querySelector(".landing-card") ||
+            document.querySelector("main")
+        );
+    }
 
-        const buttons = document.createElement("div");
-        buttons.className = "theme-switcher__buttons";
+    function buildSwitcher() {
+        let switcher = document.querySelector(".theme-switcher");
+        if (!switcher) {
+            switcher = document.createElement("div");
+            switcher.className = "theme-switcher";
+            switcher.setAttribute("role", "group");
+            switcher.setAttribute("aria-label", "Переключатель темы");
 
-        THEMES.forEach((theme) => {
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = "theme-switcher__button";
-            button.dataset.theme = theme.id;
-            button.setAttribute("aria-label", theme.label);
-            button.setAttribute("title", theme.label);
-            button.innerHTML = `<i class="fas ${theme.icon}" aria-hidden="true"></i>`;
-            button.addEventListener("click", () => applyTheme(theme.id));
-            buttons.appendChild(button);
-        });
+            const buttons = document.createElement("div");
+            buttons.className = "theme-switcher__buttons";
 
-        switcher.appendChild(buttons);
-        document.body.appendChild(switcher);
+            THEMES.forEach((theme) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "theme-switcher__button";
+                button.dataset.theme = theme.id;
+                button.setAttribute("aria-label", theme.label);
+                button.setAttribute("title", theme.label);
+                button.innerHTML = `<i class="fas ${theme.icon}" aria-hidden="true"></i>`;
+                button.addEventListener("click", () => applyTheme(theme.id));
+                buttons.appendChild(button);
+            });
+
+            switcher.appendChild(buttons);
+        }
+
+        const target = getMountTarget();
+        if (target && switcher.parentElement !== target) {
+            target.appendChild(switcher);
+        }
+
         syncButtons(getSavedTheme());
     }
 
     function init() {
         applyTheme(getSavedTheme());
         buildSwitcher();
+        window.addEventListener("resize", buildSwitcher);
     }
 
     if (document.readyState === "loading") {
