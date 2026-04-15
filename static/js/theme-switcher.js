@@ -1,9 +1,9 @@
 (function () {
     const STORAGE_KEY = "ui-theme";
     const THEMES = [
-        { id: "dark", label: "Темная" },
-        { id: "light", label: "Серая" },
-        { id: "blue", label: "Синяя" }
+        { id: "dark", label: "Темная", icon: "fa-moon" },
+        { id: "light", label: "Серая", icon: "fa-sun" },
+        { id: "blue", label: "Синяя", icon: "fa-droplet" }
     ];
 
     function getSavedTheme() {
@@ -37,11 +37,6 @@
         switcher.setAttribute("role", "group");
         switcher.setAttribute("aria-label", "Переключатель темы");
 
-        const title = document.createElement("div");
-        title.className = "theme-switcher__title";
-        title.textContent = "Тема";
-        switcher.appendChild(title);
-
         const buttons = document.createElement("div");
         buttons.className = "theme-switcher__buttons";
 
@@ -50,7 +45,9 @@
             button.type = "button";
             button.className = "theme-switcher__button";
             button.dataset.theme = theme.id;
-            button.textContent = theme.label;
+            button.setAttribute("aria-label", theme.label);
+            button.setAttribute("title", theme.label);
+            button.innerHTML = `<i class="fas ${theme.icon}" aria-hidden="true"></i>`;
             button.addEventListener("click", () => applyTheme(theme.id));
             buttons.appendChild(button);
         });

@@ -793,45 +793,43 @@ code {
 
 .theme-switcher {
     position: fixed;
+    top: 18px;
     right: 18px;
-    bottom: 18px;
+    bottom: auto;
     z-index: 1085;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 14px;
-    min-width: 220px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    min-width: auto;
+    border-radius: 999px !important;
     background: var(--panel-strong) !important;
 }
 
-.theme-switcher__title {
-    text-align: center;
-}
-
-.theme-switcher__title {
-    font-size: 0.78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--muted-strong);
+.admin-shell .theme-switcher {
+    right: 150px;
 }
 
 .theme-switcher__buttons {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .theme-switcher__button {
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border: 1px solid var(--border);
     background: var(--field-bg);
     color: var(--copy);
-    border-radius: 12px;
-    padding: 10px 12px;
-    font-size: 0.86rem;
-    font-weight: 700;
+    border-radius: 999px;
+    padding: 0;
+    font-size: 0.95rem;
     cursor: pointer;
-    transition: transform 0.16s ease, background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+    transition: transform 0.16s ease, background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .theme-switcher__button:hover {
@@ -844,6 +842,7 @@ code {
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
     color: var(--accent-contrast);
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 html[data-theme="light"] .theme-switcher__button.is-active {
@@ -934,10 +933,10 @@ html[data-theme="light"] .theme-switcher__button.is-active {
         overflow-x: auto;
     }
 
-    .theme-switcher {
+    .theme-switcher,
+    .admin-shell .theme-switcher {
+        top: 12px;
         right: 12px;
-        left: 12px;
-        bottom: 12px;
-        min-width: auto;
+        left: auto;
     }
 }
